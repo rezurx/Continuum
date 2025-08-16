@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Continuum Auto-Setup Script
+# Usage: continuum [init|start|status|help]
+
+MEM_FILE=".claude-memory.json"
+HOOK_FILE=".git/hooks/post-commit"
+CONTINUUM_HOOK="$HOME/dev/continuum/hooks/post-commit"
+
+function show_help() {
+  cat <<EOT
+Continuum - Auto-setup for any project
+
+Commands:
+  continuum            Auto-setup current folder (init + hooks + summary)
+  continuum init       Initialize memory only
+  continuum start      Start API server for this project
+  continuum status     Show current project status
+  continuum help       Show this help
+
+After setup, use 'mem' commands normally:
+  mem phase "description"
+  mem log "notes" --type note
+  mem show --summary
+EOT
+}
+
+function auto_setup() {
+  echo "🚀 Setting up Continuum for: $(basename $(pwd))"
+  
+  # Initialize memory if not exists
+  if [ ! -f "$MEM_FILE" ]; then
+    echo "  📝 Initializing memory..."
+    ~/dev/continuum/bin/mem init
+  else
+    echo "  ✅ Memory already exists"
+  fi
+  
+  # Install git hook if git repo exists
+  if [ -d ".git" ] && [ ! -f "$HOOK_FILE" ]; then
+    echo "  🔗 Installing git commit hook..."
+    cp "$CONTINUUM_HOOK" "$HOOK_FILE" 2>/dev/null && chmod +x "$HOOK_FILE"
+    echo "  ✅ Git hook installed"
+  elif [ -d ".git" ]; then
+    echo "  ✅ Git hook already exists"
+  else
+    echo "  ⚠️  No git repo found (hook not installed)"
+  fi
+  
+  echo "  📊 Current status:"
+  ~/dev/continuum/bin/mem show --summary
+  echo
+  echo "✨ Continuum ready! Use 'mem' commands or 'continuum start' for API server."
+}
+
+function start_server() {
+  # Check if virtual env exists, create if not
+  if [ ! -d "continuum-env" ]; then
+    echo "📦 Creating virtual environment..."
+    python3 -m venv continuum-env
+    source continuum-env/bin/activate
+    pip install -q fastapi uvicorn
+  else
+    source continuum-env/bin/activate
+  fi
+  
+  echo "🌐 Starting Continuum API server for: $(basename $(pwd))"
+  echo "   Access at: http://127.0.0.1:8000"
+  echo "   Docs at: http://127.0.0.1:8000/docs"
+  echo "   Press Ctrl+C to stop"
+  python ~/dev/continuum/server.py
+}
+
+function show_status() {
+  if [ -f "$MEM_FILE" ]; then
+    echo "✅ Continuum active in: $(basename $(pwd))"
+    ~/dev/continuum/bin/mem show --summary
+  else
+    echo "❌ Continuum not initialized. Run 'continuum' to set up."
+  fi
+}
+
+case "$1" in
+  init)
+    ~/dev/continuum/bin/mem init
+    ;;
+  start)
+    start_server
+    ;;
+  status)
+    show_status
+    ;;
+  help|--help|-h)
+    show_help
+    ;;
+  "")
+    auto_setup
+    ;;
+  *)
+    echo "Unknown command: $1"
+    show_help
+    exit 1
+    ;;
+esac
