@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# CONTINUUM CLI - Claude persistent memory helper (All Phases)
+
+MEM_FILE=".claude-memory.json"
+ARCHIVE_FILE=".claude-memory-archive.json"
+
+# Ensure main file exists
+if [ ! -f "${MEM_FILE}" ]; then
+  echo '{"current_phase":"","next_tasks":[],"session_history":[],"decisions":[]}' > "${MEM_FILE}"
+fi
+
+# Ensure archive file exists
+if [ ! -f "${ARCHIVE_FILE}" ]; then
+  echo '{"session_history":[]}' > "${ARCHIVE_FILE}"
+fi
+
+# Check for jq dependency
+command -v jq >/dev/null || { echo "Error: jq is required but not installed"; exit 1; }
+
+function show_help() {
+  cat <<EOT
+Continuum - project memory CLI
+
+Commands:
+  mem phase "New phase"                    Set current project phase
+  mem log "Description" [--type TYPE]     Add log entry (TYPE: note|error|decision|commit)
+  mem next "Next task"                     Add task to next_tasks list
+  mem done "Task description"              Mark task as completed
+  mem show [OPTIONS]                       Display memory contents
+  mem archive [--days N]                  Archive entries older than N days (default: 30)
+  mem init [--template TYPE]               Initialize with template (TYPE: web|backend|data)
+  mem context                              Show optimized context for AI agents
+
+Show Options:
+  --summary                                Last 3 entries + next tasks
+  --last N                                 Show last N entries
+  --errors                                 Show error entries only
+  --decisions                              Show decision entries only
+  --commits                                Show commit entries only
+EOT
+  exit 0
+}
+
+CMD="$1"
+ARG="$2"
+OPT="$3"
+VAL="$4"
+
+case "$CMD" in
+  phase)
+    jq --arg p "$ARG" '.current_phase = $p' "$MEM_FILE" > tmp && mv tmp "$MEM_FILE"
+    echo "Phase set to: $ARG"
+    ;;
+
+  log)
+    NOW=$(date +"%Y-%m-%d %H:%M")
+    TYPE="note"
+    if [[ "$OPT" == --type* ]]; then
+      TYPE=${OPT#--type }
+    fi
+    jq --arg d "$NOW" --arg n "$ARG" --arg t "$TYPE" \
+       '.session_history += [{"date":$d,"notes":$n,"type":$t}]' "$MEM_FILE" > tmp && mv tmp "$MEM_FILE"
+    echo "Logged: $ARG"
+    ;;
+
+  next)
+    jq --arg n "$ARG" '.next_tasks += [$n]' "$MEM_FILE" > tmp && mv tmp "$MEM_FILE"
+    echo "Added to next tasks: $ARG"
+    ;;
+
+  done)
+    # Mark task as completed and remove from next_tasks
+    NOW=$(date +"%Y-%m-%d %H:%M")
+    jq --arg d "$NOW" --arg n "$ARG" \
+       '.session_history += [{"date":$d,"notes":"Completed: " + $n,"type":"completion"}] | 
+        .next_tasks = (.next_tasks | map(select(. != $n)))' "$MEM_FILE" > tmp && mv tmp "$MEM_FILE"
+    echo "Completed: $ARG"
+    ;;
+
+  show)
+    case "$2" in
+      --summary)
+        echo "=== PROJECT MEMORY SUMMARY ==="
+        echo "Current Phase: $(jq -r '.current_phase' "$MEM_FILE")"
+        echo
+        echo "Recent Activity:"
+        jq -r '.session_history | sort_by(.date) | reverse | .[0:3][] | "  " + .date + " [" + .type + "]: " + .notes' "$MEM_FILE"
+        echo
+        echo "Next Tasks:"
+        jq -r '.next_tasks[] | "  - " + .' "$MEM_FILE"
+        echo "================================"
+        ;;
+      --last)
+        jq -r --argjson n "$3" '.session_history | sort_by(.date) | reverse | .[0:$n][] | .date + " [" + .type + "]: " + .notes' "$MEM_FILE"
+        ;;
+      --errors)
+        jq -r '.session_history[] | select(.type=="error") | .date + ": " + .notes' "$MEM_FILE"
+        ;;
+      --decisions)
+        jq -r '.session_history[] | select(.type=="decision") | .date + ": " + .notes' "$MEM_FILE"
+        ;;
+      --commits)
+        jq -r '.session_history[] | select(.type=="commit") | .date + ": " + .notes' "$MEM_FILE"
+        ;;
+      *)
+        cat "$MEM_FILE" | jq .
+        ;;
+    esac
+    ;;
+
+  context)
+    # Optimized output for AI agents
+    echo "PROJECT CONTEXT:"
+    echo "Phase: $(jq -r '.current_phase' "$MEM_FILE")"
+    echo "Last 2 activities:"
+    jq -r '.session_history | sort_by(.date) | reverse | .[0:2][] | "- " + .notes' "$MEM_FILE"
+    echo "Next tasks:"
+    jq -r '.next_tasks[] | "- " + .' "$MEM_FILE"
+    ;;
+
+  archive)
+    DAYS=30
+    if [[ "$2" == "--days" ]]; then
+      DAYS="$3"
+    fi
+    
+    # Calculate cutoff date
+    CUTOFF=$(date -d "$DAYS days ago" +"%Y-%m-%d")
+    
+    # Extract stale and recent entries
+    STALE=$(jq --arg cutoff "$CUTOFF" '[ .session_history[] | select(.date < $cutoff) ]' "$MEM_FILE")
+    RECENT=$(jq --arg cutoff "$CUTOFF" '[ .session_history[] | select(.date >= $cutoff) ]' "$MEM_FILE")
+    
+    # Update archive with stale entries
+    jq --argjson s "$STALE" '.session_history += $s' "$ARCHIVE_FILE" > tmpa && mv tmpa "$ARCHIVE_FILE"
+    
+    # Update main with only recent entries
+    jq --argjson r "$RECENT" '.session_history = $r' "$MEM_FILE" > tmpb && mv tmpb "$MEM_FILE"
+    
+    STALE_COUNT=$(echo "$STALE" | jq 'length')
+    echo "Archived $STALE_COUNT entries older than $DAYS days"
+    ;;
+
+  init)
+    TEMPLATE="basic"
+    if [[ "$2" == "--template" ]]; then
+      TEMPLATE="$3"
+    fi
+    
+    case "$TEMPLATE" in
+      web)
+        echo '{"current_phase":"Frontend Setup","next_tasks":["Set up build tools","Create component structure","Add routing"],"session_history":[],"decisions":[]}' > "$MEM_FILE"
+        ;;
+      backend)
+        echo '{"current_phase":"API Development","next_tasks":["Design schema","Set up endpoints","Add authentication"],"session_history":[],"decisions":[]}' > "$MEM_FILE"
+        ;;
+      data)
+        echo '{"current_phase":"Data Pipeline","next_tasks":["Set up data sources","Create ETL pipeline","Add monitoring"],"session_history":[],"decisions":[]}' > "$MEM_FILE"
+        ;;
+      *)
+        echo '{"current_phase":"","next_tasks":[],"session_history":[],"decisions":[]}' > "$MEM_FILE"
+        ;;
+    esac
+    echo "Initialized project memory with $TEMPLATE template"
+    ;;
+
+  *)
+    show_help
+    ;;
+esac

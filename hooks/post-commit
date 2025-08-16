@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Continuum post-commit hook
+# Automatically logs commit messages to the project's memory file
+
+# Check if mem command is available
+if command -v mem >/dev/null 2>&1; then
+    MSG=$(git log -1 --pretty=%B)
+    mem log "$MSG" --type commit
+fi
