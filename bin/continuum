@@ -244,8 +244,25 @@ function perform_import() {
   ' 2>/dev/null || echo "   Check status with: mem show --summary"
   
   echo ""
-  echo "💡 You can now delete the original documentation files:"
-  printf "   rm %s\n" "${doc_files[@]}"
+  echo "📁 Moving original files to .continuum-imported/ for safety..."
+  
+  # Create archive folder
+  mkdir -p .continuum-imported
+  
+  # Move files to archive
+  local moved_files=()
+  for file in "${doc_files[@]}"; do
+    if [ -f "$file" ]; then
+      mv "$file" .continuum-imported/
+      moved_files+=("$file")
+      echo "   📦 Archived: $file → .continuum-imported/"
+    fi
+  done
+  
+  echo ""
+  echo "✅ Import complete! Original files safely archived in .continuum-imported/"
+  echo "   You can restore with: mv .continuum-imported/* ."
+  echo "   Or delete archive when confident: rm -rf .continuum-imported/"
   echo ""
   echo "🚀 Continuum is now your single source of truth!"
 }
