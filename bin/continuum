@@ -15,6 +15,7 @@ Commands:
   continuum init       Initialize memory only
   continuum start      Start API server for this project
   continuum status     Show current project status
+  continuum import     Import existing project documentation
   continuum help       Show this help
 
 After setup, use 'mem' commands normally:
@@ -22,6 +23,231 @@ After setup, use 'mem' commands normally:
   mem log "notes" --type note
   mem show --summary
 EOT
+}
+
+function check_for_import() {
+  # Only check if memory is empty (new project)
+  local history_count=$(~/dev/continuum/bin/mem show | jq '.session_history | length' 2>/dev/null || echo "0")
+  
+  if [ "$history_count" -le 1 ]; then
+    # Look for common documentation files
+    local doc_files=()
+    for pattern in "PROJECT.md" "README.md" "TODO.md" "PROGRESS.md" "CHANGELOG.md" "NOTES.md" "progress.md" "todo.md"; do
+      if [ -f "$pattern" ]; then
+        doc_files+=("$pattern")
+      fi
+    done
+    
+    if [ ${#doc_files[@]} -gt 0 ]; then
+      echo ""
+      echo "📋 Found project documentation files:"
+      for file in "${doc_files[@]}"; do
+        echo "   - $file"
+      done
+      echo ""
+      echo "💡 Would you like to import this context into Continuum?"
+      echo "   This will help AI agents understand your project immediately."
+      echo ""
+      echo "1) Yes - Show me the import instructions"
+      echo "2) No  - Skip import and continue"
+      echo ""
+      read -p "Choice (1/2): " choice
+      echo ""
+      
+      case "$choice" in
+        1|y|yes|Y|Yes)
+          echo "🤖 Starting automatic import..."
+          echo ""
+          
+          # Start API server in background if not running
+          if ! curl -s http://localhost:8000/health >/dev/null 2>&1; then
+            echo "🚀 Starting Continuum API server..."
+            start_server_background "${doc_files[@]}"
+          else
+            echo "✅ API server already running"
+            perform_import "${doc_files[@]}"
+          fi
+          ;;
+        2|n|no|N|No|"")
+          echo "⏭️  Skipping import. You can run 'continuum import' later."
+          echo ""
+          ;;
+        *)
+          echo "⏭️  Invalid choice. Skipping import."
+          echo ""
+          ;;
+      esac
+    fi
+  fi
+}
+
+function import_docs() {
+  echo "🤖 Starting smart import process..."
+  echo ""
+  echo "📖 Instructions for your AI assistant:"
+  echo ""
+  echo "1. Start the Continuum API server:"
+  echo "   continuum start &"
+  echo ""
+  echo "2. Use this prompt:"
+  echo "   \"Please read all documentation files in this project and extract:"
+  echo "   - Current project phase/status"
+  echo "   - Completed features and decisions" 
+  echo "   - Pending tasks and next steps"
+  echo "   - Key technical decisions made"
+  echo ""
+  echo "   Then import this context using the Continuum API:"
+  echo "   - POST /phase to set current phase"
+  echo "   - POST /log to add completed items (type: 'imported')"
+  echo "   - POST /next to add pending tasks"
+  echo ""
+  echo "   After import, confirm the context with GET /summary\""
+  echo ""
+  echo "3. Once imported, you can archive/delete the original files"
+  echo ""
+}
+
+function start_server_background() {
+  local doc_files=("$@")
+  
+  # Check if virtual env exists, create if not
+  if [ ! -d "continuum-env" ]; then
+    echo "📦 Creating virtual environment..."
+    python3 -m venv continuum-env >/dev/null 2>&1
+    source continuum-env/bin/activate
+    pip install -q fastapi uvicorn >/dev/null 2>&1
+  fi
+  
+  echo "🌐 Starting API server in background..."
+  # Start server in background and capture PID
+  (source continuum-env/bin/activate && python ~/dev/continuum/server.py >/dev/null 2>&1) &
+  local server_pid=$!
+  
+  # Wait for server to start
+  echo "⏳ Waiting for server to start..."
+  local attempts=0
+  while [ $attempts -lt 10 ]; do
+    if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+      echo "✅ Server started successfully"
+      break
+    fi
+    sleep 1
+    attempts=$((attempts + 1))
+  done
+  
+  if [ $attempts -eq 10 ]; then
+    echo "❌ Server failed to start. Please run 'continuum start' manually."
+    return 1
+  fi
+  
+  # Now perform the import
+  perform_import "${doc_files[@]}"
+  
+  # Stop the background server
+  kill $server_pid 2>/dev/null
+  echo "🛑 Background server stopped"
+}
+
+function perform_import() {
+  local doc_files=("$@")
+  
+  echo "📖 Reading and parsing documentation files..."
+  
+  # Simple parsing of common documentation patterns
+  local phase=""
+  local completed=()
+  local todos=()
+  local decisions=()
+  
+  for file in "${doc_files[@]}"; do
+    if [ -f "$file" ]; then
+      echo "   📄 Processing $file..."
+      
+      # Extract phase/status
+      local current_phase=$(grep -i "current\|status\|phase\|working on" "$file" | head -1 | sed 's/^[#*-]\+\s*//' | sed 's/[:]\s*/: /')
+      if [ -n "$current_phase" ] && [ -z "$phase" ]; then
+        phase="$current_phase"
+      fi
+      
+      # Extract completed items
+      while IFS= read -r line; do
+        if echo "$line" | grep -qi "completed\|done\|finished"; then
+          local item=$(echo "$line" | sed 's/^[#*-]\+\s*//' | sed 's/completed[:]\?\s*//i')
+          if [ -n "$item" ]; then
+            completed+=("$item")
+          fi
+        fi
+      done < "$file"
+      
+      # Extract todo/next items
+      while IFS= read -r line; do
+        if echo "$line" | grep -qi "todo\|next\|pending\|task"; then
+          local item=$(echo "$line" | sed 's/^[#*-]\+\s*//' | sed 's/todo[:]\?\s*//i' | sed 's/next[:]\?\s*//i')
+          if [ -n "$item" ]; then
+            todos+=("$item")
+          fi
+        fi
+      done < "$file"
+      
+      # Extract decisions
+      while IFS= read -r line; do
+        if echo "$line" | grep -qi "decision\|chose\|using\|decided"; then
+          local item=$(echo "$line" | sed 's/^[#*-]\+\s*//')
+          if [ -n "$item" ]; then
+            decisions+=("$item")
+          fi
+        fi
+      done < "$file"
+    fi
+  done
+  
+  echo "🔄 Importing to Continuum..."
+  
+  # Import phase
+  if [ -n "$phase" ]; then
+    echo "   📋 Setting phase: $phase"
+    curl -s -X POST http://localhost:8000/phase \
+      -H "Content-Type: application/json" \
+      -d "{\"phase\":\"$phase\"}" >/dev/null
+  fi
+  
+  # Import completed items
+  for item in "${completed[@]}"; do
+    echo "   ✅ Logging completed: $item"
+    curl -s -X POST http://localhost:8000/log \
+      -H "Content-Type: application/json" \
+      -d "{\"notes\":\"$item\",\"type\":\"imported\"}" >/dev/null
+  done
+  
+  # Import todos
+  for item in "${todos[@]}"; do
+    echo "   📝 Adding task: $item"
+    curl -s -X POST http://localhost:8000/next \
+      -H "Content-Type: application/json" \
+      -d "{\"task\":\"$item\"}" >/dev/null
+  done
+  
+  # Import decisions
+  for item in "${decisions[@]}"; do
+    echo "   🎯 Logging decision: $item"
+    curl -s -X POST http://localhost:8000/log \
+      -H "Content-Type: application/json" \
+      -d "{\"notes\":\"$item\",\"type\":\"decision\"}" >/dev/null
+  done
+  
+  echo ""
+  echo "🎉 Import completed! Summary:"
+  curl -s http://localhost:8000/summary | jq -r '
+    "Phase: " + .current_phase,
+    "Recent items: " + (.last_steps | length | tostring),
+    "Next tasks: " + (.next_tasks | length | tostring)
+  ' 2>/dev/null || echo "   Check status with: mem show --summary"
+  
+  echo ""
+  echo "💡 You can now delete the original documentation files:"
+  printf "   rm %s\n" "${doc_files[@]}"
+  echo ""
+  echo "🚀 Continuum is now your single source of truth!"
 }
 
 function auto_setup() {
@@ -45,6 +271,9 @@ function auto_setup() {
   else
     echo "  ⚠️  No git repo found (hook not installed)"
   fi
+  
+  # Check for project documentation files and offer import
+  check_for_import
   
   echo "  📊 Current status:"
   ~/dev/continuum/bin/mem show --summary
@@ -88,6 +317,9 @@ case "$1" in
     ;;
   status)
     show_status
+    ;;
+  import)
+    import_docs
     ;;
   help|--help|-h)
     show_help
