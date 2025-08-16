@@ -1,6 +1,6 @@
 #!/bin/bash
 # Continuum - One-line installer
-# curl -sSL https://raw.githubusercontent.com/yourusername/continuum/main/install.sh | bash
+# curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/install.sh | bash
 
 set -e
 
@@ -15,11 +15,11 @@ mkdir -p "$BIN_DIR"
 
 # Download files
 echo "📦 Downloading Continuum files..."
-curl -sSL https://raw.githubusercontent.com/yourusername/continuum/main/bin/continuum > "$CONTINUUM_DIR/bin/continuum"
-curl -sSL https://raw.githubusercontent.com/yourusername/continuum/main/bin/mem > "$CONTINUUM_DIR/bin/mem"
-curl -sSL https://raw.githubusercontent.com/yourusername/continuum/main/server.py > "$CONTINUUM_DIR/server.py"
-curl -sSL https://raw.githubusercontent.com/yourusername/continuum/main/hooks/post-commit > "$CONTINUUM_DIR/hooks/post-commit"
-curl -sSL https://raw.githubusercontent.com/yourusername/continuum/main/templates/claude-memory-template.json > "$CONTINUUM_DIR/templates/claude-memory-template.json"
+curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/bin/continuum > "$CONTINUUM_DIR/bin/continuum"
+curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/bin/mem > "$CONTINUUM_DIR/bin/mem"
+curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/server.py > "$CONTINUUM_DIR/server.py"
+curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/hooks/post-commit > "$CONTINUUM_DIR/hooks/post-commit"
+curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/templates/claude-memory-template.json > "$CONTINUUM_DIR/templates/claude-memory-template.json"
 
 # Make scripts executable
 chmod +x "$CONTINUUM_DIR/bin/continuum"
@@ -93,6 +93,6 @@ echo "📚 Quick start:"
 echo "   cd your-project"
 echo "   continuum"
 echo ""
-echo "📖 Documentation: https://github.com/yourusername/continuum"
+echo "📖 Documentation: https://github.com/rezurx/Continuum"
 echo ""
 echo "⚠️  If 'continuum' command not found, run: source $SHELL_RC"

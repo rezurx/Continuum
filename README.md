@@ -1,270 +1,219 @@
-# Continuum - Persistent Memory for AI Coding Sessions
+# Continuum
 
-**Continuum** is a lightweight, project-scoped memory system designed to preserve context between AI-assisted coding sessions (e.g. Claude Code, Gemini CLI, etc.) **without consuming model context or tokens**.
+> **Never explain your project twice to AI coding assistants**
 
-## ✨ What it does
+Continuum is a lightweight, project-scoped memory system that preserves context between AI-assisted coding sessions without consuming tokens or requiring manual updates.
 
-- 📝 Log what you worked on, problems solved, and what's next
-- 🔄 Resume future sessions by loading a small summary instead of re-explaining everything  
-- 🔍 Maintain searchable history of decisions, fixes, and milestones
-- 📦 Automatically record commit activity
-- 🌐 Expose everything via local API so any agent can access/update memory autonomously
+## 🎯 The Problem
 
-**In short**: Makes AI agents persistent and aligned across sessions — turning isolated prompts into a continuous development thread.
+Every AI coding session looks like this:
+```
+You: "Read PROJECT.md, TODO.md, CHANGELOG.md to understand what we're working on..."
+AI: *burns 2000+ tokens reading files*
+You: "Also check recent commits..."  
+AI: *burns more tokens*
+You: "Now we can finally start working on..."
+```
+
+**Result:** Wasted tokens, slow session starts, manual progress tracking, redundant documentation files.
+
+## ✨ The Solution
+
+```bash
+cd your-project
+continuum                    # One-time setup
+# Just start coding - everything tracked automatically
+```
+
+```bash
+# Next session - AI gets instant context
+curl http://localhost:8000/context
+# "Phase: Authentication | Last: Fixed JWT validation | Next: Add 2FA"
+```
+
+**That's it.** Zero manual updates, zero token waste, instant context recovery.
 
 ## 🚀 Quick Start
 
-**TL;DR**: `cd your-project && continuum` - that's it! 🎉
-
-### 1. Install Dependencies
+### Installation
 ```bash
-# Ubuntu/Debian
-sudo apt install jq
-
-# macOS
-brew install jq
-
-# Python dependencies for API server
-pip install fastapi uvicorn
+curl -sSL https://raw.githubusercontent.com/rezurx/Continuum/main/install.sh | bash
 ```
 
-### 2. Add to PATH
-```bash
-# Add to ~/.bashrc or ~/.zshrc
-export PATH="$HOME/dev/continuum/bin:$PATH"
-
-# Reload shell
-source ~/.bashrc
-```
-
-### 3. Auto-Setup Any Project
+### Usage
 ```bash
 cd your-project
-continuum  # Automatically sets up memory, git hooks, and imports existing docs
+continuum                    # Auto-setup (once per project)
+# Start coding normally - everything tracks automatically
 ```
 
-**What auto-setup does:**
-- Creates `.claude-memory.json` if it doesn't exist
-- Installs git commit hook (if git repo)
-- **Detects existing documentation** (README.md, TODO.md, PROGRESS.md, etc.)
-- **Offers smart import** of existing project context
-- **Auto-archives original files** to `.continuum-imported/` after import
-- Shows current project status
+### AI Integration
+Add to your Claude Code/Gemini CLI session:
+```
+Project context available at: curl http://localhost:8000/context
+Use this instead of reading project files.
+```
 
-### 4. Manual Initialization (Alternative)
+## 🧠 How It Works
+
+**Intelligent Auto-Tracking:**
+- 📁 **File changes** → "Modified authentication system"
+- 🔄 **Git commits** → "Implemented user login"  
+- 📦 **Package installs** → "Added React Router v6"
+- 🧪 **Test runs** → "All tests passing (15/15)"
+- 🌿 **Branch switches** → "Working on feature/auth"
+
+**Smart Pattern Recognition:**
 ```bash
-cd your-project
-mem init --template web  # or backend, data, or basic
+# AI detects: 5 .sol files modified + test files
+# Auto-logs: "Smart contract development session"
+
+# AI detects: package.json change + migration files  
+# Auto-logs: "Database schema update"
 ```
 
-### 5. Start Using
+## 🎁 Features
+
+### ✅ Core Features
+- **Zero-token context loading** - API provides instant project status
+- **Automatic activity tracking** - File changes, commits, commands, tests
+- **Project-scoped memory** - Each project gets independent context
+- **Git integration** - Commits automatically logged with smart categorization
+- **Cross-platform** - Works on Linux, macOS, Windows
+- **Language agnostic** - Supports any project type
+
+### 🤖 AI Assistant Integration
+- **Claude Code** - Instant context via API calls
+- **Gemini CLI** - Built-in integration commands
+- **Cursor** - VS Code extension support
+- **Any AI tool** - Standard REST API
+
+### 📊 Smart Analytics
+- **Session detection** - Knows when you start/stop coding
+- **Pattern recognition** - "Testing phase" vs "Bug fixing" vs "Feature development"
+- **Progress tracking** - Automatic milestone detection
+- **Time-based archiving** - Keeps memory files clean
+
+## 📖 Examples
+
+### Web Development
 ```bash
-mem phase "Setting up authentication"
-mem log "Added JWT middleware" --type decision
-mem next "Implement user registration"
-mem show --summary
+cd my-react-app
+continuum
+# Auto-detects: React project, sets up web template
+# Tracks: Component changes, npm installs, build runs
 ```
 
-## 📖 CLI Commands
-
-### Core Commands
+### Blockchain Development  
 ```bash
-mem phase "Description"              # Set current project phase
-mem log "What happened" [--type]     # Log activity (note|error|decision|commit)
-mem next "Task description"          # Add to next tasks
-mem done "Task description"          # Mark task as completed
+cd my-defi-project
+continuum
+# Auto-detects: Solidity files, sets up blockchain template
+# Tracks: Contract deployments, test runs, migrations
 ```
 
-### Viewing & Analysis
+### Data Science
 ```bash
-mem show                            # Show full memory file
-mem show --summary                  # Show last 3 entries + next tasks
-mem show --last 5                   # Show last 5 entries
-mem show --errors                   # Show only error entries
-mem show --decisions                # Show only decision entries
-mem show --commits                  # Show only commit entries
-mem context                         # Optimized output for AI agents
+cd ml-experiment
+continuum  
+# Auto-detects: Jupyter notebooks, Python files
+# Tracks: Model training, data processing, experiments
 ```
 
-### Management
+## 🛠️ Advanced Usage
+
+### Session Management
 ```bash
-mem archive                         # Archive entries older than 30 days
-mem archive --days 14               # Archive entries older than 14 days
-mem init --template web             # Initialize with template (web|backend|data)
+continuum start              # Start tracked session
+continuum status             # Check current project state
+continuum summary            # Get human-readable summary
+continuum archive            # Clean old entries
 ```
-
-## 📦 Smart Import & Auto-Archive
-
-### Automatic Documentation Detection
-When you run `continuum` in a project with existing documentation, it automatically detects and offers to import:
-- `PROJECT.md`, `README.md`, `TODO.md`, `PROGRESS.md`
-- `CHANGELOG.md`, `NOTES.md`, `progress.md`, `todo.md`
-
-### Smart Content Parsing
-The import process automatically extracts:
-- **Current phase/status** from headers like "Current", "Status", "Phase", "Working on"
-- **Completed items** from lines containing "completed", "done", "finished"
-- **Todo/next items** from lines containing "todo", "next", "pending", "task"
-- **Decisions** from lines containing "decision", "chose", "using", "decided"
-
-### Safe Auto-Archive
-After successful import:
-- Original files are moved to `.continuum-imported/` directory
-- Files can be restored with: `mv .continuum-imported/* .`
-- Archive can be deleted when confident: `rm -rf .continuum-imported/`
-- **Your original files are never lost!**
-
-### Manual Import
-```bash\ncontinuum import  # Shows step-by-step import instructions\n```
-
-## 🔗 Git Integration
-
-### Auto-commit Logging
-```bash
-# Copy hook to a git project
-cp ~/dev/continuum/hooks/post-commit .git/hooks/
-chmod +x .git/hooks/post-commit
-```
-
-### Install Across All Projects
-```bash
-find ~/dev -name ".git" -type d -exec sh -c 'cp ~/dev/continuum/hooks/post-commit {}/hooks/post-commit && chmod +x {}/hooks/post-commit' \;
-```
-
-## 🌐 API Server
-
-### Start Server
-```bash
-cd your-project
-python ~/dev/continuum/server.py
-```
-
-Server runs at `http://127.0.0.1:8000` with interactive docs at `/docs`
 
 ### API Endpoints
 ```bash
-# Get summary for AI agents
-curl http://127.0.0.1:8000/summary
-
-# Get optimized context
-curl http://127.0.0.1:8000/context
-
-# Add log entry
-curl -X POST http://127.0.0.1:8000/log \
-  -H "Content-Type: application/json" \
-  -d '{"notes":"Fixed login bug","type":"note"}'
-
-# Set project phase
-curl -X POST http://127.0.0.1:8000/phase \
-  -H "Content-Type: application/json" \
-  -d '{"phase":"Testing phase"}'
-
-# Add next task
-curl -X POST http://127.0.0.1:8000/next \
-  -H "Content-Type: application/json" \
-  -d '{"task":"Add error handling"}'
-
-# Mark task completed
-curl -X POST http://127.0.0.1:8000/done \
-  -H "Content-Type: application/json" \
-  -d '{"task":"Add error handling"}'
+GET  /context               # Optimized for AI consumption
+GET  /summary               # Human-readable status
+POST /log                   # Manual logging
+POST /phase                 # Set project phase
+GET  /history               # Full session history
 ```
 
-## 🤖 AI Agent Integration
-
-### For Claude Code
-Add this to your session or CLAUDE.md:
-```
-You can access project context via: curl http://127.0.0.1:8000/context
-To log progress: curl -X POST http://127.0.0.1:8000/log -H "Content-Type: application/json" -d '{"notes":"description","type":"note"}'
-Use the API instead of tracking progress in conversation.
-```
-
-### Manual Context Loading
+### Templates
 ```bash
-# Paste this output to any AI agent
-mem context
+continuum init --template web        # React/Vue/Angular setup
+continuum init --template backend    # API development setup  
+continuum init --template blockchain # Solidity/Web3 setup
+continuum init --template data       # ML/Data science setup
 ```
 
-## 📁 File Structure
+## 🔧 Configuration
 
-```
-~/dev/continuum/
-├── bin/mem                     # Main CLI script
-├── server.py                   # API server
-├── hooks/post-commit           # Git hook template
-├── templates/
-│   └── claude-memory-template.json
-└── README.md
-```
-
-### Project Files (auto-created)
-```
-your-project/
-├── .claude-memory.json         # Main memory file
-└── .claude-memory-archive.json # Archived entries
+### Auto-tracking Rules
+```json
+{
+  "patterns": {
+    "*.sol + test/": "Smart contract development",
+    "package.json + migrations/": "Database schema update",
+    "*.tsx + *.test.*": "Frontend feature development"
+  }
+}
 ```
 
-## 💡 Example Workflows
-
-### New Project Setup
+### Git Hook Customization
 ```bash
-cd my-new-project
-continuum                    # Auto-setup: memory + hooks + status
-
-# Start tracking progress
-mem phase "API refactoring"
-mem log "Switched from REST to GraphQL" --type decision
-mem next "Update client SDK"
+continuum hooks install              # Install git hooks
+continuum hooks configure            # Customize hook behavior
 ```
 
-### Existing Project with Documentation
-```bash
-cd existing-project          # Has README.md, TODO.md, etc.
-continuum                    # Detects docs, offers import
-# Choose: 1) Yes - import automatically
-#         2) No  - skip and continue
+## 🏗️ Architecture
 
-# After import, original files safely moved to .continuum-imported/
-mem show --summary           # See imported context
+```
+Project Directory/
+├── .claude-memory.json              # Active memory (lightweight)
+├── .claude-memory-archive.json      # Historical data
+└── .git/hooks/post-commit          # Auto-commit logging
+
+Continuum Installation/
+├── bin/continuum                    # Main CLI
+├── bin/mem                          # Memory management
+├── server.py                        # Local API server
+└── templates/                       # Project templates
 ```
 
-### Daily Development
-```bash
-# Log decisions and progress
-mem log "Database migration completed" --type note
-mem next "Write integration tests"
+## 🤝 Contributing
 
-# View current state
-mem show --summary
+We welcome contributions! Areas where help is needed:
 
-# Complete tasks
-mem done "Update client SDK"
+- **IDE Integrations** - VS Code, JetBrains, Vim extensions
+- **AI Tool Integrations** - More AI coding assistants
+- **Pattern Recognition** - Smarter activity detection
+- **Project Templates** - More language/framework templates
+- **Performance** - Optimization for large projects
 
-# Let AI agent access context
-curl http://127.0.0.1:8000/context
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 🛠️ Templates
+## 📄 License
 
-### Web Template
-- Phase: "Frontend Setup"
-- Tasks: Set up build tools, Create component structure, Add routing
+MIT License - see [LICENSE](LICENSE) for details.
 
-### Backend Template  
-- Phase: "API Development"
-- Tasks: Design schema, Set up endpoints, Add authentication
+## 🌟 Why This Matters
 
-### Data Template
-- Phase: "Data Pipeline" 
-- Tasks: Set up data sources, Create ETL pipeline, Add monitoring
+**The AI coding revolution is here**, but context management is broken. Developers waste time and tokens explaining their projects to AI assistants every session.
 
-## 🎯 Benefits
+Continuum fixes this with:
+- 🚀 **Instant context recovery** - No more "read these files first"
+- 💰 **Token savings** - Eliminate redundant file reads
+- 🤖 **Universal compatibility** - Works with any AI coding tool
+- 📈 **Better outcomes** - AI understands your project deeply from session one
 
-✅ **Zero token consumption** - Memory stored locally, not in model context  
-✅ **Project-scoped** - Each project has its own memory  
-✅ **Agent-agnostic** - Works with Claude, Gemini, or any AI tool  
-✅ **Persistent** - Context survives across sessions  
-✅ **Searchable** - Filter by type, date, or content  
-✅ **Automatic** - Git hooks capture commits automatically  
-✅ **Lightweight** - Simple JSON files, no database required
+## 📞 Support
+
+- 📖 **Documentation** - [docs.continuum.dev](https://docs.continuum.dev)
+- 💬 **Discord** - [discord.gg/continuum](https://discord.gg/continuum)
+- 🐛 **Issues** - [GitHub Issues](https://github.com/rezurx/Continuum/issues)
+- 🐦 **Twitter** - [@ContinuumDev](https://twitter.com/ContinuumDev)
+
+---
+
+**⭐ Star this repo if Continuum saves you time and tokens!**
