@@ -209,10 +209,9 @@ Continuum fixes this with:
 
 ## 📞 Support
 
-- 📖 **Documentation** - [docs.continuum.dev](https://docs.continuum.dev)
-- 💬 **Discord** - [discord.gg/continuum](https://discord.gg/continuum)
+- 💬 **Discord** - [discord.com/channels/1367156542305996820/1407795520415600782](https://discord.com/channels/1367156542305996820/1407795520415600782)
 - 🐛 **Issues** - [GitHub Issues](https://github.com/rezurx/Continuum/issues)
-- 🐦 **Twitter** - [@ContinuumDev](https://twitter.com/ContinuumDev)
+- 🐦 **Twitter** - [@CeviphantRezurx](https://x.com/CeviphantRezurx)
 
 ---
 
